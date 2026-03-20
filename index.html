@@ -8,56 +8,100 @@
     <style>
       * { margin: 0; padding: 0; }
       body { overflow: hidden; background: #000; }
+      /* Видео и canvas ДОЛЖНЫ быть в DOM на iOS, но скрыты */
+      #arVideo {
+        position: fixed;
+        width: 1px; height: 1px;
+        top: 0; left: 0;
+        opacity: 0.01; /* не display:none — iOS блокирует текстуру */
+        pointer-events: none;
+      }
+      #arCanvas {
+        position: fixed;
+        width: 1px; height: 1px;
+        top: 0; left: 0;
+        opacity: 0.01;
+        pointer-events: none;
+      }
       #overlay {
         position: fixed;
         inset: 0;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.75);
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         z-index: 9999;
+        gap: 16px;
       }
-      #overlay button {
-        padding: 20px 40px;
+      #overlay p {
+        color: white;
+        font-size: 16px;
+        font-family: sans-serif;
+        text-align: center;
+        padding: 0 30px;
+      }
+      #startBtn {
+        padding: 18px 40px;
         font-size: 22px;
         background: #ff4081;
         color: white;
         border: none;
         border-radius: 30px;
         cursor: pointer;
+        font-family: sans-serif;
       }
     </style>
 
     <script>
-      AFRAME.registerComponent('ios-video', {
+      AFRAME.registerComponent('canvas-video', {
         init: function () {
-          // Видео ДОЛЖНО быть в DOM на iOS
-          const video = document.createElement('video');
-          video.id = 'arVideo';
-          video.src = 'video.mp4';
-          video.loop = true;
-          video.muted = true;
-          video.setAttribute('playsinline', '');
-          video.setAttribute('webkit-playsinline', '');
-          video.style.cssText = 'position:fixed;width:1px;height:1px;top:0;left:0;opacity:0;pointer-events:none;';
-          document.body.appendChild(video);
-          this.video = video;
+          this.started = false;
 
-          const texture = new THREE.VideoTexture(video);
+          // Ждём пока видео будет готово
+          window.addEventListener('ar-start', () => {
+            this.started = true;
+            this._setup();
+          });
+        },
+
+        _setup: function () {
+          const video = document.getElementById('arVideo');
+          const canvas = document.getElementById('arCanvas');
+          const ctx = canvas.getContext('2d');
+
+          // Устанавливаем размер canvas под видео
+          video.addEventListener('loadedmetadata', () => {
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 360;
+          });
+
+          this.video = video;
+          this.canvas = canvas;
+          this.ctx = ctx;
+
+          // Создаём текстуру из canvas — это работает на iOS
+          const texture = new THREE.CanvasTexture(canvas);
           texture.minFilter = THREE.LinearFilter;
           texture.magFilter = THREE.LinearFilter;
-          texture.format = THREE.RGBFormat;
           this.texture = texture;
 
           const geo = new THREE.PlaneGeometry(1.6, 0.9);
-          const mat = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+          const mat = new THREE.MeshBasicMaterial({
+            map: texture,
+            side: THREE.DoubleSide
+          });
           const mesh = new THREE.Mesh(geo, mat);
           mesh.rotation.x = -Math.PI / 2;
-          mesh.position.set(0, 0.5, 0);
           this.el.setObject3D('mesh', mesh);
         },
 
         tick: function () {
+          if (!this.started || !this.video || this.video.paused) return;
+          if (this.canvas.width === 0) return;
+
+          // Рисуем каждый кадр видео на canvas → обновляем текстуру
+          this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
           if (this.texture) this.texture.needsUpdate = true;
         }
       });
@@ -65,8 +109,24 @@
   </head>
 
   <body>
+    <!-- Видео в DOM, не display:none — iOS требует видимости для WebGL -->
+    <video
+      id="arVideo"
+      src="video.mp4"
+      loop
+      muted
+      playsinline
+      webkit-playsinline
+      preload="auto"
+      crossorigin="anonymous">
+    </video>
+
+    <!-- Canvas-посредник для текстуры -->
+    <canvas id="arCanvas" width="640" height="360"></canvas>
+
     <div id="overlay">
-      <button id="startBtn">▶ Нажми для запуска AR</button>
+      <p>Наведи камеру на маркер Hiro после запуска</p>
+      <button id="startBtn">▶ Запустить AR</button>
     </div>
 
     <a-scene
@@ -76,33 +136,26 @@
       renderer="logarithmicDepthBuffer: true;"
     >
       <a-marker preset="hiro">
-        <a-entity ios-video></a-entity>
+        <a-entity canvas-video></a-entity>
       </a-marker>
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      // ВАЖНО: touchend, не click — это синхронный жест на iOS
       document.getElementById('startBtn').addEventListener('touchend', function (e) {
         e.preventDefault();
-        const video = document.getElementById('arVideo');
-        if (video) {
-          // Синхронно, без промисов — iOS требует именно так
-          video.muted = true;
-          video.play();
-        }
-        document.getElementById('overlay').style.display = 'none';
+        startAR();
       });
+      document.getElementById('startBtn').addEventListener('click', startAR);
 
-      // Фолбэк для ПК/тестирования
-      document.getElementById('startBtn').addEventListener('click', function () {
+      function startAR() {
         const video = document.getElementById('arVideo');
-        if (video) {
-          video.muted = true;
-          video.play();
-        }
+        // Запускаем синхронно внутри жеста пользователя
+        video.muted = true;
+        video.play();
+        window.dispatchEvent(new Event('ar-start'));
         document.getElementById('overlay').style.display = 'none';
-      });
+      }
     </script>
   </body>
 </html>
