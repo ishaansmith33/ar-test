@@ -142,29 +142,24 @@
     </a-scene>
 
     <script>
-      document.getElementById('startBtn').addEventListener('touchend', function (e) {
-        e.preventDefault();
-        startAR();
-      });
-      document.getElementById('startBtn').addEventListener('click', startAR);
+  const audio = new Audio('audio.mp3');
+  audio.loop = true;
+  audio.volume = 1.0;
 
-    // Добавь отдельный аудио элемент в body
-const audio = document.createElement('audio');
-audio.src = 'video.mp4'; // та же дорожка из видео
-audio.loop = true;
-audio.volume = 1.0;
-document.body.appendChild(audio);
+  document.getElementById('startBtn').addEventListener('touchend', function (e) {
+    e.preventDefault();
+    startAR();
+  });
+  document.getElementById('startBtn').addEventListener('click', startAR);
 
-function startAR() {
-  const video = document.getElementById('arVideo');
-  video.muted = true;
-  video.play();
-  
-  // Запускаем аудио синхронно с жестом
-  audio.play();
-  
-  window.dispatchEvent(new Event('ar-start'));
-  document.getElementById('overlay').style.display = 'none';
+  function startAR() {
+    const video = document.getElementById('arVideo');
+    video.muted = true;
+    video.play();
+    audio.play();
+    window.dispatchEvent(new Event('ar-start'));
+    document.getElementById('overlay').style.display = 'none';
+  }
 }
       }
     </script>
