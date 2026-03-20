@@ -8,12 +8,12 @@
     <style>
       * { margin: 0; padding: 0; }
       body { overflow: hidden; background: #000; }
-      /* Видео и canvas ДОЛЖНЫ быть в DOM на iOS, но скрыты */
+
       #arVideo {
         position: fixed;
         width: 1px; height: 1px;
         top: 0; left: 0;
-        opacity: 0.01; /* не display:none — iOS блокирует текстуру */
+        opacity: 0.01;
         pointer-events: none;
       }
       #arCanvas {
@@ -23,6 +23,7 @@
         opacity: 0.01;
         pointer-events: none;
       }
+
       #overlay {
         position: fixed;
         inset: 0;
@@ -31,7 +32,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        z-index: 9999;
+        z-index: 99999;
         gap: 16px;
       }
       #overlay p {
@@ -50,6 +51,10 @@
         border-radius: 30px;
         cursor: pointer;
         font-family: sans-serif;
+        position: relative;
+        z-index: 99999;
+        pointer-events: auto;
+        -webkit-tap-highlight-color: transparent;
       }
     </style>
 
@@ -57,8 +62,6 @@
       AFRAME.registerComponent('canvas-video', {
         init: function () {
           this.started = false;
-
-          // Ждём пока видео будет готово
           window.addEventListener('ar-start', () => {
             this.started = true;
             this._setup();
@@ -70,7 +73,6 @@
           const canvas = document.getElementById('arCanvas');
           const ctx = canvas.getContext('2d');
 
-          // Устанавливаем размер canvas под видео
           video.addEventListener('loadedmetadata', () => {
             canvas.width = video.videoWidth || 640;
             canvas.height = video.videoHeight || 360;
@@ -80,7 +82,6 @@
           this.canvas = canvas;
           this.ctx = ctx;
 
-          // Создаём текстуру из canvas — это работает на iOS
           const texture = new THREE.CanvasTexture(canvas);
           texture.minFilter = THREE.LinearFilter;
           texture.magFilter = THREE.LinearFilter;
@@ -99,8 +100,6 @@
         tick: function () {
           if (!this.started || !this.video || this.video.paused) return;
           if (this.canvas.width === 0) return;
-
-          // Рисуем каждый кадр видео на canvas → обновляем текстуру
           this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
           if (this.texture) this.texture.needsUpdate = true;
         }
@@ -109,7 +108,6 @@
   </head>
 
   <body>
-    <!-- Видео в DOM, не display:none — iOS требует видимости для WebGL -->
     <video
       id="arVideo"
       src="video.mp4"
@@ -121,7 +119,6 @@
       crossorigin="anonymous">
     </video>
 
-    <!-- Canvas-посредник для текстуры -->
     <canvas id="arCanvas" width="640" height="360"></canvas>
 
     <div id="overlay">
@@ -134,6 +131,7 @@
       arjs="sourceType: webcam; debugUIEnabled: false;"
       vr-mode-ui="enabled: false"
       renderer="logarithmicDepthBuffer: true;"
+      style="pointer-events: none;"
     >
       <a-marker preset="hiro">
         <a-entity canvas-video></a-entity>
@@ -142,26 +140,31 @@
     </a-scene>
 
     <script>
-  const audio = new Audio('audio.mp3');
-  audio.loop = true;
-  audio.volume = 1.0;
+      const audio = new Audio('audio.mp3');
+      audio.loop = true;
+      audio.volume = 1.0;
 
-  document.getElementById('startBtn').addEventListener('touchend', function (e) {
-    e.preventDefault();
-    startAR();
-  });
-  document.getElementById('startBtn').addEventListener('click', startAR);
+      document.getElementById('startBtn').addEventListener('touchend', function (e) {
+        e.preventDefault();
+        startAR();
+      });
+      document.getElementById('startBtn').addEventListener('click', startAR);
 
-  function startAR() {
-    const video = document.getElementById('arVideo');
-    video.muted = true;
-    video.play();
-    audio.play();
-    window.dispatchEvent(new Event('ar-start'));
-    document.getElementById('overlay').style.display = 'none';
-  }
-}
+      function startAR() {
+        const video = document.getElementById('arVideo');
+        video.muted = true;
+        video.play();
+        audio.play();
+        window.dispatchEvent(new Event('ar-start'));
+        document.getElementById('overlay').style.display = 'none';
       }
     </script>
   </body>
 </html>
+```
+
+В репозитории должны лежать три файла:
+```
+index.html
+video.mp4
+audio.mp3
