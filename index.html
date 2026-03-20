@@ -118,7 +118,6 @@
     </video>
 
     <canvas id="arCanvas" width="640" height="360"></canvas>
-
     <audio id="bgAudio" src="audio.mp3" loop preload="auto"></audio>
 
     <div id="overlay">
@@ -142,7 +141,6 @@
         smoothThreshold="2">
         <a-entity canvas-video></a-entity>
       </a-marker>
-
       <a-entity camera></a-entity>
     </a-scene>
 
@@ -154,40 +152,29 @@
       document.getElementById('startBtn').addEventListener('click', startAR);
 
       function startAR() {
-  const video = document.getElementById('arVideo');
-  const audio = document.getElementById('bgAudio');
+        const video = document.getElementById('arVideo');
+        const audio = document.getElementById('bgAudio');
 
-  // Запрашиваем разрешение на датчики движения (iOS 13+)
-  if (typeof DeviceOrientationEvent !== 'undefined' && 
-      typeof DeviceOrientationEvent.requestPermission === 'function') {
-    DeviceOrientationEvent.requestPermission()
-      .then(function(response) {
-        if (response === 'granted') {
-          console.log('Датчики разрешены');
+        // Запрос датчиков движения iOS 13+
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof DeviceOrientationEvent.requestPermission === 'function') {
+          DeviceOrientationEvent.requestPermission()
+            .then(function(response) {
+              console.log('Датчики:', response);
+            })
+            .catch(console.error);
         }
-      })
-      .catch(console.error);
-  }
 
-  video.muted = true;
-  video.play();
+        video.muted = true;
+        video.play();
 
-  audio.volume = 1.0;
-  audio.muted = false;
-  audio.play();
+        audio.volume = 1.0;
+        audio.muted = false;
+        audio.play();
 
-  window.dispatchEvent(new Event('ar-start'));
-  document.getElementById('overlay').style.display = 'none';
-};
+        window.dispatchEvent(new Event('ar-start'));
+        document.getElementById('overlay').style.display = 'none';
       }
     </script>
   </body>
 </html>
-```
-
-Просто **скопируй весь код целиком** и замени содержимое `index.html` полностью. В репозитории должно быть:
-```
-index.html
-video.mp4
-audio.mp3
-pattern-marker.patt
