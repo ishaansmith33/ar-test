@@ -148,16 +148,21 @@
       });
       document.getElementById('startBtn').addEventListener('click', startAR);
 
-      function startAR() {
+    // Добавь отдельный аудио элемент в body
+const audio = document.createElement('audio');
+audio.src = 'video.mp4'; // та же дорожка из видео
+audio.loop = true;
+audio.volume = 1.0;
+document.body.appendChild(audio);
+
+function startAR() {
   const video = document.getElementById('arVideo');
   video.muted = true;
   video.play();
-
-  // Через короткую паузу включаем звук
-  setTimeout(() => {
-    video.muted = false;
-  }, 500);
-
+  
+  // Запускаем аудио синхронно с жестом
+  audio.play();
+  
   window.dispatchEvent(new Event('ar-start'));
   document.getElementById('overlay').style.display = 'none';
 }
