@@ -115,11 +115,13 @@
       muted
       playsinline
       webkit-playsinline
-      preload="auto"
-      crossorigin="anonymous">
+      preload="auto">
     </video>
 
     <canvas id="arCanvas" width="640" height="360"></canvas>
+
+    <!-- Аудио тег в HTML — iOS доверяет ему -->
+    <audio id="bgAudio" src="audio.mp3" loop preload="auto"></audio>
 
     <div id="overlay">
       <p>Наведи камеру на маркер Hiro после запуска</p>
@@ -140,10 +142,6 @@
     </a-scene>
 
     <script>
-      const audio = new Audio('audio.mp3');
-      audio.loop = true;
-      audio.volume = 1.0;
-
       document.getElementById('startBtn').addEventListener('touchend', function (e) {
         e.preventDefault();
         startAR();
@@ -152,9 +150,15 @@
 
       function startAR() {
         const video = document.getElementById('arVideo');
+        const audio = document.getElementById('bgAudio');
+
         video.muted = true;
         video.play();
+
+        audio.volume = 1.0;
+        audio.muted = false;
         audio.play();
+
         window.dispatchEvent(new Event('ar-start'));
         document.getElementById('overlay').style.display = 'none';
       }
@@ -163,7 +167,7 @@
 </html>
 ```
 
-В репозитории должны лежать три файла:
+Структура репозитория:
 ```
 index.html
 video.mp4
