@@ -149,12 +149,18 @@
       document.getElementById('startBtn').addEventListener('click', startAR);
 
       function startAR() {
-        const video = document.getElementById('arVideo');
-        // Запускаем синхронно внутри жеста пользователя
-        video.muted = true;
-        video.play();
-        window.dispatchEvent(new Event('ar-start'));
-        document.getElementById('overlay').style.display = 'none';
+  const video = document.getElementById('arVideo');
+  video.muted = true;
+  video.play();
+
+  // Через короткую паузу включаем звук
+  setTimeout(() => {
+    video.muted = false;
+  }, 500);
+
+  window.dispatchEvent(new Event('ar-start'));
+  document.getElementById('overlay').style.display = 'none';
+}
       }
     </script>
   </body>
