@@ -1,97 +1,103 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>WebAR Test</title>
+    <title>WebAR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
     <style>
-      body { margin: 0; overflow: hidden; }
-      #startButton {
+      * { margin: 0; padding: 0; }
+      body { overflow: hidden; }
+      #startBtn {
         position: fixed;
-        bottom: 20px;
+        bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        padding: 15px 30px;
-        background-color: #ff4081;
+        padding: 16px 32px;
+        background: #ff4081;
         color: white;
         border: none;
-        border-radius: 25px;
-        font-size: 18px;
+        border-radius: 30px;
+        font-size: 20px;
+        z-index: 9999;
         cursor: pointer;
-        z-index: 999;
       }
     </style>
 
     <script>
-      // Регистрируем компонент ДО загрузки сцены
-      AFRAME.registerComponent('video-updater', {
+      // Регистрируем ДО загрузки сцены
+      AFRAME.registerComponent('ios-video', {
         init: function () {
-          this.video = document.getElementById('myVideo');
-        },
-        tick: function () {
-          // Каждый кадр обновляем текстуру
-          const mesh = this.el.getObject3D('mesh');
-          if (!mesh) return;
-          mesh.traverse(function (node) {
-            if (node.material && node.material.map) {
-              node.material.map.needsUpdate = true;
-            }
+          // Создаём video элемент через JS — это ключевое для iOS
+          const video = document.createElement('video');
+          video.src = 'video.mp4';
+          video.loop = true;
+          video.muted = true;
+          video.setAttribute('playsinline', '');
+          video.setAttribute('webkit-playsinline', '');
+          video.load();
+          this.video = video;
+
+          // Создаём Three.js текстуру и меш напрямую
+          this.texture = new THREE.VideoTexture(video);
+          this.texture.minFilter = THREE.LinearFilter;
+          this.texture.magFilter = THREE.LinearFilter;
+
+          const geometry = new THREE.PlaneGeometry(1.6, 0.9);
+          const material = new THREE.MeshBasicMaterial({
+            map: this.texture,
+            side: THREE.DoubleSide
           });
+          const mesh = new THREE.Mesh(geometry, material);
+          mesh.rotation.x = -Math.PI / 2;
+
+          this.el.setObject3D('videoMesh', mesh);
+
+          // Слушаем кнопку
+          window.addEventListener('ar-video-start', () => {
+            video.muted = false;
+            video.play().catch(() => {
+              video.muted = true;
+              video.play();
+            });
+          });
+        },
+
+        tick: function () {
+          // Обновляем каждый кадр — без этого iOS показывает чёрный
+          if (this.video && !this.video.paused) {
+            this.texture.needsUpdate = true;
+          }
         }
       });
     </script>
   </head>
 
   <body>
-    <button id="startButton">Включить AR и Звук</button>
+    <button id="startBtn">▶ Запустить AR</button>
 
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;" vr-mode-ui="enabled: false">
-      <a-assets>
-        <video
-          id="myVideo"
-          src="video.mp4"
-          preload="auto"
-          loop
-          muted
-          playsinline
-          webkit-playsinline
-          crossorigin="anonymous">
-        </video>
-      </a-assets>
-
+    <a-scene
+      embedded
+      arjs="sourceType: webcam; debugUIEnabled: false;"
+      vr-mode-ui="enabled: false"
+      renderer="logarithmicDepthBuffer: true;"
+    >
       <a-marker preset="hiro">
-        <!-- a-plane надёжнее чем a-video для текстур -->
-        <a-plane
-          id="videoPlane"
-          src="#myVideo"
-          width="1.6"
-          height="0.9"
-          position="0 0.5 0"
-          rotation="-90 0 0"
-          video-updater>
-        </a-plane>
+        <a-entity ios-video></a-entity>
       </a-marker>
 
       <a-entity camera></a-entity>
     </a-scene>
 
     <script>
-      const button = document.getElementById('startButton');
-      const video = document.getElementById('myVideo');
-
-      button.addEventListener('click', function () {
-        // Сначала muted=true чтобы точно запустилось
-        video.muted = true;
-        video.play().then(function() {
-          // После запуска включаем звук
-          video.muted = false;
-        }).catch(function(e) {
-          console.log('Autoplay blocked:', e);
-          video.muted = true;
-          video.play();
-        });
-        button.style.display = 'none';
+      document.getElementById('startBtn').addEventListener('click', function () {
+        // Диспатчим событие для компонента
+        window.dispatchEvent(new Event('ar-video-start'));
+        this.style.display = 'none';
       });
     </script>
   </body>
 </html>
+```
+
+---
