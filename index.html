@@ -154,18 +154,31 @@
       document.getElementById('startBtn').addEventListener('click', startAR);
 
       function startAR() {
-        const video = document.getElementById('arVideo');
-        const audio = document.getElementById('bgAudio');
+  const video = document.getElementById('arVideo');
+  const audio = document.getElementById('bgAudio');
 
-        video.muted = true;
-        video.play();
+  // Запрашиваем разрешение на датчики движения (iOS 13+)
+  if (typeof DeviceOrientationEvent !== 'undefined' && 
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    DeviceOrientationEvent.requestPermission()
+      .then(function(response) {
+        if (response === 'granted') {
+          console.log('Датчики разрешены');
+        }
+      })
+      .catch(console.error);
+  }
 
-        audio.volume = 1.0;
-        audio.muted = false;
-        audio.play();
+  video.muted = true;
+  video.play();
 
-        window.dispatchEvent(new Event('ar-start'));
-        document.getElementById('overlay').style.display = 'none';
+  audio.volume = 1.0;
+  audio.muted = false;
+  audio.play();
+
+  window.dispatchEvent(new Event('ar-start'));
+  document.getElementById('overlay').style.display = 'none';
+};
       }
     </script>
   </body>
