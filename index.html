@@ -23,26 +23,14 @@
         opacity: 0.01;
         pointer-events: none;
       }
-      #overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.75);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
-        gap: 16px;
-        pointer-events: none;
-      }
-      #overlay p {
-        color: white;
-        font-size: 16px;
-        font-family: sans-serif;
-        text-align: center;
-        padding: 0 30px;
-      }
+
+      /* Кнопка появляется только после разрешения датчиков */
       #startBtn {
+        display: none;
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translateX(-50%);
         padding: 18px 40px;
         font-size: 22px;
         background: #ff4081;
@@ -51,7 +39,6 @@
         border-radius: 30px;
         cursor: pointer;
         font-family: sans-serif;
-        position: relative;
         z-index: 99999;
         pointer-events: auto;
         -webkit-tap-highlight-color: transparent;
@@ -121,10 +108,8 @@
     <canvas id="arCanvas" width="640" height="360"></canvas>
     <audio id="bgAudio" src="audio.mp3" loop preload="auto"></audio>
 
-    <div id="overlay">
-      <p>Наведи камеру на картину после запуска</p>
-      <button id="startBtn">▶ Запустить AR</button>
-    </div>
+    <!-- Кнопка без оверлея — не блокирует диалог AR.js -->
+    <button id="startBtn">▶ Запустить AR</button>
 
     <a-scene
       embedded
@@ -146,6 +131,11 @@
     </a-scene>
 
     <script>
+      // Показываем кнопку только после того как сцена загрузилась
+      document.querySelector('a-scene').addEventListener('loaded', function () {
+        document.getElementById('startBtn').style.display = 'block';
+      });
+
       document.getElementById('startBtn').addEventListener('touchend', function (e) {
         e.preventDefault();
         startAR();
@@ -156,16 +146,6 @@
         const video = document.getElementById('arVideo');
         const audio = document.getElementById('bgAudio');
 
-        // Запрос датчиков движения iOS 13+
-        if (typeof DeviceOrientationEvent !== 'undefined' &&
-            typeof DeviceOrientationEvent.requestPermission === 'function') {
-          DeviceOrientationEvent.requestPermission()
-            .then(function(response) {
-              console.log('Датчики:', response);
-            })
-            .catch(console.error);
-        }
-
         video.muted = true;
         video.play();
 
@@ -174,7 +154,7 @@
         audio.play();
 
         window.dispatchEvent(new Event('ar-start'));
-        document.getElementById('overlay').style.display = 'none';
+        document.getElementById('startBtn').style.display = 'none';
       }
     </script>
   </body>
