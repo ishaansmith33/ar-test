@@ -1,22 +1,17 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>WebAR</title>
+    <title>AR Motion Design</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.5/aframe/build/aframe-ar.js"></script>
+    
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
+    
     <style>
       * { margin: 0; padding: 0; }
       body { overflow: hidden; background: #000; }
 
-      #arVideo {
-        position: fixed;
-        width: 1px; height: 1px;
-        top: 0; left: 0;
-        opacity: 0.01;
-        pointer-events: none;
-      }
-      #arCanvas {
+      #arVideo, #arCanvas {
         position: fixed;
         width: 1px; height: 1px;
         top: 0; left: 0;
@@ -24,28 +19,41 @@
         pointer-events: none;
       }
 
-      /* Кнопка появляется только после разрешения датчиков */
+      /* Кнопка старта */
       #startBtn {
-        display: none;
+        display: block; /* Показываем сразу */
         position: fixed;
         bottom: 40px;
         left: 50%;
         transform: translateX(-50%);
         padding: 18px 40px;
-        font-size: 22px;
-        background: #ff4081;
+        font-size: 20px;
+        font-weight: bold;
+        background: #007AFF;
         color: white;
         border: none;
         border-radius: 30px;
         cursor: pointer;
         font-family: sans-serif;
         z-index: 99999;
-        pointer-events: auto;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         -webkit-tap-highlight-color: transparent;
+      }
+      .hint {
+        position: fixed;
+        bottom: 100px;
+        width: 100%;
+        text-align: center;
+        color: white;
+        font-family: sans-serif;
+        font-size: 16px;
+        text-shadow: 1px 1px 3px black;
+        z-index: 99998;
       }
     </style>
 
     <script>
+      // Твой шикарный компонент для отрисовки видео через Canvas (спасает от черных экранов на iOS)
       AFRAME.registerComponent('canvas-video', {
         init: function () {
           this.started = false;
@@ -74,13 +82,15 @@
           texture.magFilter = THREE.LinearFilter;
           this.texture = texture;
 
+          // Пропорции видео (1.6 ширина, 0.9 высота - это формат 16:9)
           const geo = new THREE.PlaneGeometry(1.6, 0.9);
           const mat = new THREE.MeshBasicMaterial({
             map: texture,
             side: THREE.DoubleSide
           });
           const mesh = new THREE.Mesh(geo, mat);
-          mesh.rotation.x = -Math.PI / 2;
+          // Поворот плоскости, чтобы она лежала на картине ровно
+          mesh.rotation.x = 0; 
           this.el.setObject3D('mesh', mesh);
         },
 
@@ -108,56 +118,74 @@
     <canvas id="arCanvas" width="640" height="360"></canvas>
     <audio id="bgAudio" src="audio.mp3" loop preload="auto"></audio>
 
-    <!-- Кнопка без оверлея — не блокирует диалог AR.js -->
+    <div class="hint" id="hintText">Наведи камеру на картину</div>
     <button id="startBtn">▶ Запустить AR</button>
 
     <a-scene
       mindar-image="imageTargetSrc: targets.mind; autoStart: false; uiLoading: no; uiScanning: no; uiError: no;"
-      embedded
       color-space="sRGB"
-      renderer="colorManagement: true;"
+      renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
-      device-orientation-permission-ui="enabled: false"
-      style="pointer-events: none;"
-    >
-      <a-marker
-        type="pattern"
-        url="pattern-marker.patt"
-        smooth="true"
-        smoothCount="5"
-        smoothTolerance="0.01"
-        smoothThreshold="2">
+      device-orientation-permission-ui="enabled: false">
+      
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+      <a-entity mindar-image-target="targetIndex: 0" id="target-entity">
         <a-entity canvas-video></a-entity>
-      </a-marker>
-      <a-entity camera></a-entity>
+      </a-entity>
+
     </a-scene>
 
     <script>
-      // Показываем кнопку только после того как сцена загрузилась
-      document.querySelector('a-scene').addEventListener('loaded', function () {
-        document.getElementById('startBtn').style.display = 'block';
-      });
+      const startBtn = document.getElementById('startBtn');
+      const hintText = document.getElementById('hintText');
+      const sceneEl = document.querySelector('a-scene');
+      const video = document.getElementById('arVideo');
+      const audio = document.getElementById('bgAudio');
+      const targetEntity = document.getElementById('target-entity');
 
-      document.getElementById('startBtn').addEventListener('touchend', function (e) {
-        e.preventDefault();
-        startAR();
-      });
-      document.getElementById('startBtn').addEventListener('click', startAR);
-
+      // Логика запуска по кнопке
       function startAR() {
-        const video = document.getElementById('arVideo');
-        const audio = document.getElementById('bgAudio');
+        startBtn.style.display = 'none';
+        hintText.style.display = 'none';
 
+        // 1. Запускаем движок распознавания картинки
+        sceneEl.systems["mindar-image-system"].start();
+
+        // 2. Готовим видео и аудио (они будут стоять на паузе, пока камера не увидит картину)
         video.muted = true;
-        video.play();
+        video.play().then(() => {
+            video.pause();
+        });
 
         audio.volume = 1.0;
         audio.muted = false;
-        audio.play();
+        audio.play().then(() => {
+            audio.pause();
+        });
 
+        // 3. Сообщаем канвасу, что можно работать
         window.dispatchEvent(new Event('ar-start'));
-        document.getElementById('startBtn').style.display = 'none';
       }
+
+      startBtn.addEventListener('click', startAR);
+      startBtn.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        startAR();
+      });
+
+      // УМНАЯ ПАУЗА: Играем видео/звук ТОЛЬКО когда картина в кадре
+      targetEntity.addEventListener("targetFound", event => {
+        console.log("Картина распознана!");
+        video.play();
+        audio.play();
+      });
+
+      targetEntity.addEventListener("targetLost", event => {
+        console.log("Картина потеряна!");
+        video.pause();
+        audio.pause();
+      });
     </script>
   </body>
 </html>
